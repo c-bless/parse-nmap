@@ -1,5 +1,29 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015 Christoph Bless
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#
+# Description:
+# Parse-nmap is a tool which parses nmap scan results (only XML) from a file. By using parse-nmap it is possible to
+# filter the results by platform or ip or to generate target lists.
+#
+# This script is available on bitbucket.org see:
+#     https://bitbucket.org/cbless/parse-nmap
+
+
 import argparse
 
 from libnmap.parser import NmapParser
@@ -12,6 +36,16 @@ def print_grepable(ip, hostname, os):
 
 
 def get_open_ports(host, protocol='tcp'):
+    """
+    This function generates a list of open ports. Each entry is a tuple which contains the port, protocol, servicename
+    and a banner string.
+
+    :param host: The NmapHost object
+    :type host libnmap.objects.host.NmapHost
+    :param protocol: the protocol type. Either 'tcp' (default) or 'udp'
+    :type protocol str
+    :return: list of tuples
+    """
     ports = []
     for port, proto in host.get_open_ports():
         if host.get_service(port, proto) is not None:
@@ -109,8 +143,24 @@ def print_hosts(hosts, args):
         print_host(host, args)
 
 
-def filter_hosts_by_os(hosts, args):
-    if args.os_family is None and args.os_gen is None:
+def filter_hosts_by_os(hosts, os_family= None, os_gen=None):
+    """
+    This function creates a list of NmapHost objects which matches the given filters. You either can specify an os
+    family or a os generation or both. The parameter os_family has to be an exact string like "Windows" or "Linux" and
+    the parameter os_gen should be a string like "7", "8" or "2.4.X".
+
+    :param hosts: as list of NmapHost objects
+    :type hosts: list of NmapHost objects
+
+    :param os_family: the os family filter string
+    :type os_family: string
+
+    :param os_gen: the os generation filter string
+    :type os_gen: string
+
+    :return: list of NmapHost objects
+    """
+    if os_family is None and os_gen is None:
         return hosts
 
     result = []
@@ -120,18 +170,18 @@ def filter_hosts_by_os(hosts, args):
         found = False
         for match in os_matches:
             for osc in match.osclasses:
-                if args.os_family is not None and args.os_gen is not None:
+                if os_family is not None and os_gen is not None:
                     # both filters are used, so we have to check if both match
-                    if osc.osgen == args.os_gen and osc.osfamily == args.os_family:
+                    if osc.osgen == os_gen and osc.osfamily == os_family:
                         found = True
                         break
                 else:
                     # one filter used
-                    if args.os_gen is not None:
+                    if os_gen is not None:
                         # only os_gen was specified
-                        if osc.osgen == args.os_gen:
+                        if osc.osgen == os_gen:
                             found = True
-                    elif args.os_family is not None:
+                    elif os_family is not None:
                         # only os_family was specified
                         if osc.osfamily == args.os_family:
                             found = True
@@ -142,6 +192,15 @@ def filter_hosts_by_os(hosts, args):
 
 
 def parse_ports(ports):
+    """
+    This function is used to generate a list of ports from a port specification. You can use ',' to separate ports
+    and '-' for a range of ports. (e.g. 20-22,80,443)
+
+    :param ports: A list of ports
+
+    :return: list of ports
+    :rtype list of int
+    """
     portlist = []
     if ports == "" or ports == None:
         return portlist
@@ -156,7 +215,16 @@ def parse_ports(ports):
             portlist.append(int(port))
     return portlist
 
+
 def parse_ips(ips):
+    """
+    This function generates a list of ips from an input string. This input can contain ips seperated by ",".
+
+    :param ips: string with ips seperated with ","
+
+    :return: a list of ips
+    :rtype list of strings
+    """
     ip_list = []
     if ips == "" or ips == None:
         return ip_list
@@ -191,14 +259,23 @@ def filter_hosts_by_ip(hosts, ips):
     return result
 
 def list_ips(hosts):
+    """
+    This function generates a list of ips from as list of NmapHost objects.
+
+    :param hosts: list of NmapHost objects
+    :return: list of ips
+    :rtype list of strings
+    """
     result = []
     for host in hosts:
         result.append(host.address)
     return result
 
+
 def export_list(hosts, file):
     with open(file, 'w') as f:
         f.write("\n".join(list_ips(hosts)))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="I am a simple tool to filter nmap scans")
@@ -243,7 +320,7 @@ if __name__ == '__main__':
     if not args.list:
         print "# number of hosts after IP filter: {0}".format(str(len(hosts)))
 
-    hosts = filter_hosts_by_os(hosts, args)
+    hosts = filter_hosts_by_os(hosts, os_family=args.os_family, os_gen=args.os_gen)
     if not args.list:
         print "# number of hosts after OS and IP filter: {0}".format(str(len(hosts)))
 
