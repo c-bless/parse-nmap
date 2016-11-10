@@ -57,12 +57,26 @@ def get_open_ports(host, protocol='tcp'):
     return ports
 
 
-def print_host(host, args):
+def get_hostname(host):
+    """
+    This function get the hostname of the given host.
+
+    :param host: The NmapHost object
+    :type host: libnmap.objects.host.NmapHost
+
+    :return: hostname
+    :rtype: str
+    """
     hostname = ""
     for name in host.hostnames:
         if name == "localhost" and hostname != "":
             continue
         hostname = name
+    return hostname
+
+
+def print_host(host, args):
+    hostname = get_hostname(host)
 
     os_matches = host.os_match_probabilities()
     os = ""
@@ -153,10 +167,10 @@ def filter_hosts_by_os(hosts, os_family= None, os_gen=None):
     :type hosts: list of NmapHost objects
 
     :param os_family: the os family filter string
-    :type os_family: string
+    :type os_family: str
 
     :param os_gen: the os generation filter string
-    :type os_gen: string
+    :type os_gen: str
 
     :return: list of NmapHost objects
     """
@@ -202,7 +216,7 @@ def parse_ports(ports):
     :rtype list of int
     """
     portlist = []
-    if ports == "" or ports == None:
+    if ports == "" or ports is None:
         return portlist
     for port in ports.split(','):
         if '-' in port:
@@ -226,7 +240,7 @@ def parse_ips(ips):
     :rtype list of strings
     """
     ip_list = []
-    if ips == "" or ips == None:
+    if ips == "" or ips is None:
         return ip_list
     for ip in ips.split(','):
         ip_list.append(ip)
@@ -234,6 +248,20 @@ def parse_ips(ips):
 
 
 def filter_hosts_by_port(hosts, tcpports=[], udports=[]):
+    """
+    Generates a new list of hosts which matches the given port filters. Only hosts with open ports specified either in
+    the tcpports or updports list will be present in the new list.
+
+    :param hosts: list of NmapHost objects
+    :type list
+
+    :param tcpports: list of TCP ports used for filtering
+    :type list
+
+    :param udports: list of UDP ports used for filtering
+
+    :return:
+    """
     if len(tcp_ports) == 0 and len(udp_ports) == 0:
         return hosts
 
@@ -252,11 +280,19 @@ def filter_hosts_by_port(hosts, tcpports=[], udports=[]):
 
 
 def filter_hosts_by_ip(hosts, ips):
+    """
+    Generates a new list of hosts which matches the given IP filter.
+
+    :param hosts:
+    :param ips:
+    :return:
+    """
     result = []
     for host in hosts:
         if host.address in ips:
             result.append(host)
     return result
+
 
 def list_ips(hosts):
     """
