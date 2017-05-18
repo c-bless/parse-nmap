@@ -277,6 +277,39 @@ def export_list(hosts, file):
         f.write("\n".join(list_ips(hosts)))
 
 
+
+def export_csv(hosts, file):
+    result = []
+    result.append("{0};{1};{2};{3};{4};".format("IP", "HOSTNAME", "OS", "TCP-PORTS", "UDP-Ports"))
+    for host in hosts:
+        hostname = ""
+        for name in host.hostnames:
+            if name == "localhost" and hostname != "":
+                continue
+            hostname = name
+
+        os_matches = host.os_match_probabilities()
+        os = ""
+        if len(os_matches) > 0:
+            os = os_matches[0].name
+
+        tcp_ports = []
+        for (port, protocol, service, banner) in get_open_ports(host, protocol='tcp'):
+            tcp_ports.append(str(port))
+
+        tcp_port_str = ",".join(tcp_ports)
+
+        udp_ports = []
+        for (port, protocol, service, banner) in get_open_ports(host, protocol='udp'):
+            udp_ports.append(str(port))
+        udp_port_str = ",".join(udp_ports)
+
+        if len(tcp_ports) > 0 or len(udp_ports) >0:
+            result.append("'{0}';{1};{2};{3};{4};".format(host.address, hostname,os, tcp_port_str, udp_port_str))
+
+    with open(file, 'w') as f:
+        f.write("\n".join(result))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="I am a simple tool to filter nmap scans")
     parser.add_argument("file", metavar="FILE", type=str, nargs=1, help="The nmap XML file")
@@ -298,6 +331,8 @@ if __name__ == '__main__':
                         help="Print the OS section")
     parser.add_argument("--export", metavar="FILE", required=False, type=str, default=None,
                         help="Generate LaTeX tables for each host and write them to the specifies file")
+    parser.add_argument("--export-csv", metavar="FILE", required=False, type=str, default=None,
+                        help="export all hosts with open ports")
     parser.add_argument("--list", required=False, action='store_true', default=False,
                         help="Generate a Target list usable as nmap input")
     parser.add_argument("-d", "--list-delimiter", required=False, default=" ",
@@ -311,6 +346,7 @@ if __name__ == '__main__':
     udp_ports = parse_ports(args.udp)
     ips = parse_ips(args.r)
     hosts = report.hosts
+    hosts = [x for x in hosts if x.is_up()]
 
     if not args.list:
         print "# number of hosts in the report: {0}".format(str(len(report.hosts)))
@@ -338,3 +374,6 @@ if __name__ == '__main__':
 
     if args.export is not None:
         export_latex(hosts, args.export)
+    if args.export_csv is not None:
+        export_csv(hosts, args.export_csv)
+
