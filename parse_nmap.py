@@ -369,7 +369,7 @@ def generate_per_host_portlist(hosts=[]):
     for host in hosts:
         tcp_ports = get_open_ports(host, protocol='tcp')
         tcp_portlist = sorted([port for (port, protocol, service, banner) in tcp_ports])
-        udp_ports = get_open_ports(host, protocol='tcp')
+        udp_ports = get_open_ports(host, protocol='udp')
         udp_portlist = sorted([port for (port, protocol, service, banner) in udp_ports])
         all_portlist = sorted(set(tcp_portlist) | set(udp_portlist))
         result.append((host.address, tcp_portlist, udp_portlist, all_portlist))
@@ -382,7 +382,9 @@ def print_per_host_portlist(hosts=[]):
         tcp_str = ",".join(str(n) for n in tcp_ports)
         udp_str = ",".join(str(n) for n in udp_ports)
         all_str = ",".join(str(n) for n in all_ports)
-        print "{0};{1};{2};{3}".format(addr, tcp_str, udp_str, all_str)
+        print "{0};tcp;{1}".format(addr, tcp_str)
+        print "{0};udp;{1}".format(addr, udp_str)
+        print "{0};all;{1}".format(addr, all_str)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="I am a simple tool to filter nmap scans")
