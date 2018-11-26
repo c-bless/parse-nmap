@@ -346,6 +346,44 @@ def export_csv(hosts, file):
     with open(file, 'w') as f:
         f.write("\n".join(result))
 
+
+def generate_portlist(hosts=[],protocol='tcp'):
+    result = set()
+    for host in hosts:
+        ports = get_open_ports(host, protocol=protocol)
+        result |= set([ port for (port, protocol, service, banner) in ports])
+    return map( lambda x: int(x), result)
+
+
+def print_portlist(hosts=[]):
+    tcp_portlist = sorted(generate_portlist(hosts))
+    print "TCP ports: {0}".format(",".join(str(n) for n in tcp_portlist))
+    udp_portlist = sorted(generate_portlist(hosts, 'udp'))
+    print "UDP ports: {0}".format(",".join(str(n) for n in udp_portlist))
+    all_portlist = sorted(set(tcp_portlist) | set(udp_portlist))
+    print "all ports: {0}".format(",".join(str(n) for n in all_portlist))
+
+
+def generate_per_host_portlist(hosts=[]):
+    result = []
+    for host in hosts:
+        tcp_ports = get_open_ports(host, protocol='tcp')
+        tcp_portlist = sorted([port for (port, protocol, service, banner) in tcp_ports])
+        udp_ports = get_open_ports(host, protocol='tcp')
+        udp_portlist = sorted([port for (port, protocol, service, banner) in udp_ports])
+        all_portlist = sorted(set(tcp_portlist) | set(udp_portlist))
+        result.append((host.address, tcp_portlist, udp_portlist, all_portlist))
+    return result
+
+def print_per_host_portlist(hosts=[]):
+    result = generate_per_host_portlist(hosts)
+    for hostinfo in result:
+        addr , tcp_ports, udp_ports, all_ports = hostinfo
+        tcp_str = ",".join(str(n) for n in tcp_ports)
+        udp_str = ",".join(str(n) for n in udp_ports)
+        all_str = ",".join(str(n) for n in all_ports)
+        print "{0};{1};{2};{3}".format(addr, tcp_str, udp_str, all_str)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="I am a simple tool to filter nmap scans")
     parser.add_argument("file", metavar="FILE", type=str, nargs=1, help="The nmap XML file")
@@ -375,6 +413,12 @@ if __name__ == '__main__':
                         help="Delimiter used to separate hosts in the list output")
     parser.add_argument("--list-file", metavar="FILE", required=False, type=str, default=None,
                         help="Generate a file with the target instead of print them to stdout")
+    parser.add_argument("-v", "--verbose", required=False, default=False, action="store_true",
+                        help="Print verbose information to stdout")
+    parser.add_argument("--portlist", required=False, action="store_true", default=False,
+                        help="Gernarte a list of open ports.")
+    parser.add_argument("--per-host-portlist", required=False, action="store_true", default=False,
+                        help="Gernarte a list of open ports per host.")
     args = parser.parse_args()
 
     report = NmapParser.parse_fromfile(args.file[0])
@@ -384,32 +428,38 @@ if __name__ == '__main__':
     hosts = report.hosts
     hosts = [x for x in hosts if x.is_up()]
 
-    if not args.list:
+    if not args.list and args.verbose:
         print "# number of hosts in the report: {0}".format(str(len(report.hosts)))
 
     if len(ips) > 0:
         hosts = filter_hosts_by_ip(hosts, ips)
-    if not args.list:
+    if not args.list and args.verbose:
         print "# number of hosts after IP filter: {0}".format(str(len(hosts)))
 
     hosts = filter_hosts_by_os(hosts, os_family=args.os_family, os_gen=args.os_gen)
-    if not args.list:
+    if not args.list and args.verbose:
         print "# number of hosts after OS and IP filter: {0}".format(str(len(hosts)))
 
     hosts = filter_hosts_by_port(hosts, tcp_ports, udp_ports)
-    if not args.list:
+    if not args.list and args.verbose:
         print "# number of hosts after OS, IP and port filter: {0}".format(str(len(hosts)))
 
     if args.list_file is not None:
         export_list(hosts, args.list_file)
-        
-    if not args.list:
-        print_hosts(hosts, args)
-    else:
-        print args.list_delimiter.join(list_ips(hosts))
 
-    if args.export is not None:
-        export_latex(hosts, args.export)
-    if args.export_csv is not None:
-        export_csv(hosts, args.export_csv)
+    if args.portlist:
+        print_portlist(hosts)
+    elif args.per_host_portlist:
+        print_per_host_portlist(hosts)
+    else:
+        # no portlist and no per host portlist
+        if not args.list:
+            print_hosts(hosts, args)
+        else:
+            print args.list_delimiter.join(list_ips(hosts))
+
+        if args.export is not None:
+            export_latex(hosts, args.export)
+        if args.export_csv is not None:
+            export_csv(hosts, args.export_csv)
 
