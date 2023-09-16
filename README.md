@@ -14,4 +14,4 @@ Since version v0.2.0 parse-nmap is available on PyPi and can be installed with p
 
 
 ## Usage
-If want to learn more about parse-nmap have a look at the wiki on https://bitbucket.org/cbless/parse-nmap/wiki/Home
+If want to learn more about parse-nmap have a look at the wiki on [https://github.com/c-bless/parse-nmap/wiki](https://github.com/c-bless/parse-nmap/wiki)
